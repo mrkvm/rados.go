@@ -12,6 +12,7 @@ LICENSE file.
 
 ## TODO
 
+- Godoc (!)
 - Read
 - ReadAt and WriteAt; more file-like object API
 - Append
