@@ -1,9 +1,13 @@
 # RADOS.go
 
-RADOS.go provides Go bindings for the CEPH RADOS client library (librados).
+RADOS.go provides Go bindings for the CEPH RADOS client library
+([librados](http://ceph.com/docs/next/rados/api/librados/)).
+
 We attempt to adhere to the style of the Go OS package as much as possible
-(for example, our Object API implements the FileStat and ReaderAt/WriterAt
+(for example, our Object type implements the FileStat and ReaderAt/WriterAt
 interfaces).
+
+More information on CEPH and RADOS can be found here: http://ceph.com
 
 ## License
 
@@ -13,7 +17,8 @@ LICENSE file.
 ## TODO
 
 - Godoc (!)
-- ReadAt and WriteAt; more file-like object API
+- Test environment improvements (setup/teardown, etc.).
+- ReadAt()/WriteAt() tests.
 - More generic Reader/Writer implemenation. Track file position and provide Seek()
 - Append
 - Extended attributes
@@ -33,10 +38,10 @@ Maybe:
 
 ## Contributors
 
-@joshcarter
-@mrkvm
+- [@joshcarter](https://github.com/joshcarter)
+- [@mrkvm](https://github.com/mrkvm)
 
 ## Credits
 
-Thanks to @vuleetu for initial inspiration.
-
+Thanks to [@vuleetu](https://github.com/vuleetu)
+for [initial inspiration](https://github.com/vuleetu/gorados).
