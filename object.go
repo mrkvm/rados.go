@@ -10,6 +10,7 @@ import "C"
 
 import (
     "fmt"
+    "io"
     "os"
     "time"
     "unsafe"
@@ -179,6 +180,67 @@ func (c *Context) Stat(name string) (os.FileInfo, error) {
         modTime: time.Unix(int64(ctime), int64(0)),
         sys:     sys{ctx: c.ctx, pool: c.Pool},
     }, nil
+}
+
+/* ReadAt reads len(data) bytes from the given RADOS object at the byte
+ * offset off. It returns the number of bytes read and the error, if any.
+ * ReadAt always returns a non-nil error when n < len(data).
+ * At the end of file, that error is io.EOF.
+ *
+ * This function adopted from the Go os.ReadAt() function.
+ */
+func (o *Object) ReadAt(data []byte, off int64) (n int, err error) {
+    cname := C.CString(o.name)
+    defer C.free(unsafe.Pointer(cname))
+
+    for len(data) > 0 {
+        cdata, cdatalen := byteSliceToBuffer(data)
+        coff := C.uint64_t(off)
+
+        cerr := C.rados_read(o.ctx, cname, cdata, cdatalen, coff)
+
+        if cerr == 0 {
+            return n, io.EOF
+        }
+
+        if cerr < 0 {
+            err = fmt.Errorf("RADOS read %s: %s", o.name, strerror(cerr))
+            break
+        }
+
+        n += int(cerr)
+        data = data[cerr:]
+        off += int64(cerr)
+    }
+
+    return
+}
+
+/* WriteAt writes len(data) bytes to the RADOS object at the byte offset
+ * off. It returns the number of bytes written and an error, if any.
+ * Write returns a non-nil error when n < len(data).
+ */
+func (o *Object) WriteAt(data []byte, off int64) (n int, err error) {
+    cname := C.CString(o.name)
+    defer C.free(unsafe.Pointer(cname))
+
+    for len(data) > 0 {
+        cdata, cdatalen := byteSliceToBuffer(data)
+        coff := C.uint64_t(off)
+
+        cerr := C.rados_write(o.ctx, cname, cdata, cdatalen, coff)
+
+        if cerr < 0 {
+            err = fmt.Errorf("RADOS write %s: %s", o.name, strerror(cerr))
+            break
+        }
+
+        n += int(cerr)
+        data = data[cerr:]
+        off += int64(cerr)
+    }
+
+    return
 }
 
 // func (o *Object) WriteInContext(Context *c, ...)
