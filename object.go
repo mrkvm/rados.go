@@ -19,7 +19,7 @@ import (
 // sys contains underlying RADOS IO context and pool information for an object.
 // Needed for FileStat interface.
 type sys struct {
-    ctx  C.rados_ioctx_t
+    c    *Context
     pool string
 }
 
@@ -110,6 +110,27 @@ func (c *Context) Open(name string) (*Object, error) {
     return obj, nil
 }
 
+// Stat retrieves information about the named object in the pool referenced
+// by the given context. A pointer to the object is returned as an
+// os.FileInfo (fulfills FileStat interface).
+func (c *Context) Stat(name string) (os.FileInfo, error) {
+    var csize C.uint64_t
+    var ctime C.time_t
+    cname := C.CString(name)
+    defer C.free(unsafe.Pointer(cname))
+
+    if cerr := C.rados_stat(c.ctx, cname, &csize, &ctime); cerr < 0 {
+        return nil, fmt.Errorf("RADOS stat %s: %s", name, strerror(cerr))
+    }
+
+    return &Object{
+        name:    name,
+        size:    int64(csize),
+        modTime: time.Unix(int64(ctime), int64(0)),
+        sys:     sys{c: c, pool: c.Pool},
+    }, nil
+}
+
 // Remove deletes the named object in the pool referenced by the given context.
 func (c *Context) Remove(name string) error {
     cname := C.CString(name)
@@ -137,17 +158,6 @@ func (c *Context) Truncate(name string, size int64) error {
     return nil
 }
 
-// byteSliceToBuffer is a utility function to convert the given byte slice
-// to a C character pointer. It returns the pointer and the size of
-// the data (as a C size_t).
-func byteSliceToBuffer(data []byte) (*C.char, C.size_t) {
-    if len(data) > 0 {
-        return (*C.char)(unsafe.Pointer(&data[0])), C.size_t(len(data))
-    } else {
-        return (*C.char)(unsafe.Pointer(&data)), C.size_t(0)
-    }
-}
-
 // Append writes the given data to the end of the named object
 // in the pool referenced by the given context.
 func (c *Context) Append(name string, data []byte) error {
@@ -157,22 +167,6 @@ func (c *Context) Append(name string, data []byte) error {
     cdata, cdatalen := byteSliceToBuffer(data)
 
     if cerr := C.rados_append(c.ctx, cname, cdata, cdatalen); cerr < 0 {
-        return fmt.Errorf("RADOS put %s: %s", name, strerror(cerr))
-    }
-
-    return nil
-}
-
-// Put writes data to the named object in the pool referenced by the
-// given context. If the object does not exist, it will be created.
-// If the object exists, it will first be truncated to 0 then overwritten.
-func (c *Context) Put(name string, data []byte) error {
-    cname := C.CString(name)
-    defer C.free(unsafe.Pointer(cname))
-
-    cdata, cdatalen := byteSliceToBuffer(data)
-
-    if cerr := C.rados_write_full(c.ctx, cname, cdata, cdatalen); cerr < 0 {
         return fmt.Errorf("RADOS put %s: %s", name, strerror(cerr))
     }
 
@@ -209,25 +203,61 @@ func (c *Context) Get(name string) ([]byte, error) {
     return data, nil
 }
 
-// Stat retrieves information about the named object in the pool referenced
-// by the given context. A pointer to the object is returned as an
-// os.FileInfo (fulfills FileStat interface).
-func (c *Context) Stat(name string) (os.FileInfo, error) {
-    var csize C.uint64_t
-    var ctime C.time_t
+// Put writes data to the named object in the pool referenced by the
+// given context. If the object does not exist, it will be created.
+// If the object exists, it will first be truncated to 0 then overwritten.
+func (c *Context) Put(name string, data []byte) error {
     cname := C.CString(name)
     defer C.free(unsafe.Pointer(cname))
 
-    if cerr := C.rados_stat(c.ctx, cname, &csize, &ctime); cerr < 0 {
-        return nil, fmt.Errorf("RADOS stat %s: %s", name, strerror(cerr))
+    cdata, cdatalen := byteSliceToBuffer(data)
+
+    if cerr := C.rados_write_full(c.ctx, cname, cdata, cdatalen); cerr < 0 {
+        return fmt.Errorf("RADOS put %s: %s", name, strerror(cerr))
     }
 
-    return &Object{
-        name:    name,
-        size:    int64(csize),
-        modTime: time.Unix(int64(ctime), int64(0)),
-        sys:     sys{ctx: c.ctx, pool: c.Pool},
-    }, nil
+    return nil
+}
+
+// Stat wrap the Context-based Stat function for the given object.
+// The object structure is modified in place
+func (o *Object) Stat() error {
+    objInfo, err := o.c.Stat(o.name)
+
+    if err != nil {
+        return err
+    }
+
+    obj := objInfo.(*Object)
+    o.size = obj.size
+    o.modTime = obj.modTime
+
+    return nil
+}
+
+// Remove wraps the Context-based Remove function for the given object.
+func (o *Object) Remove() error {
+    return o.c.Remove(o.name)
+}
+
+// Truncate wraps the Context-based Truncate function for the given object.
+func (o *Object) Truncate(size int64) error {
+    return o.c.Truncate(o.name, size)
+}
+
+// Append wraps the Context-based Append function for the given object.
+func (o *Object) Append(data []byte) error {
+    return o.c.Append(o.name, data)
+}
+
+// Get wraps the Context-based Get function for the given object.
+func (o *Object) Get() ([]byte, error) {
+    return o.c.Get(o.name)
+}
+
+// Put wraps the Context-based Put function for the given object.
+func (o *Object) Put(data []byte) error {
+    return o.c.Put(o.name, data)
 }
 
 // ReadAt reads len(data) bytes from the given RADOS object at the byte
@@ -244,7 +274,7 @@ func (o *Object) ReadAt(data []byte, off int64) (n int, err error) {
         cdata, cdatalen := byteSliceToBuffer(data)
         coff := C.uint64_t(off)
 
-        cerr := C.rados_read(o.ctx, cname, cdata, cdatalen, coff)
+        cerr := C.rados_read(o.c.ctx, cname, cdata, cdatalen, coff)
 
         if cerr == 0 {
             return n, io.EOF
@@ -274,7 +304,7 @@ func (o *Object) WriteAt(data []byte, off int64) (n int, err error) {
         cdata, cdatalen := byteSliceToBuffer(data)
         coff := C.uint64_t(off)
 
-        cerr := C.rados_write(o.ctx, cname, cdata, cdatalen, coff)
+        cerr := C.rados_write(o.c.ctx, cname, cdata, cdatalen, coff)
 
         if cerr < 0 {
             err = fmt.Errorf("RADOS write %s: %s", o.name, strerror(cerr))
@@ -287,6 +317,17 @@ func (o *Object) WriteAt(data []byte, off int64) (n int, err error) {
     }
 
     return
+}
+
+// byteSliceToBuffer is a utility function to convert the given byte slice
+// to a C character pointer. It returns the pointer and the size of
+// the data (as a C size_t).
+func byteSliceToBuffer(data []byte) (*C.char, C.size_t) {
+    if len(data) > 0 {
+        return (*C.char)(unsafe.Pointer(&data[0])), C.size_t(len(data))
+    } else {
+        return (*C.char)(unsafe.Pointer(&data)), C.size_t(0)
+    }
 }
 
 // TODO:
