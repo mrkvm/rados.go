@@ -17,7 +17,6 @@ LICENSE file.
 ## TODO
 
 - Godoc (!)
-- Test environment improvements (setup/teardown, etc.).
 - ReadAt()/WriteAt() tests.
 - More generic Reader/Writer implemenation. Track file position and provide Seek()
 - Append
@@ -28,7 +27,6 @@ LICENSE file.
 - Client-managed snapshot -- what should this API look like?
 - Pool stats
 - List pools
-- Pool management (create/delete)
 - Object list iterator
 
 Maybe:
@@ -42,6 +40,8 @@ Maybe:
 - [@mrkvm](https://github.com/mrkvm)
 
 ## Credits
+
+This project sponsored by [Spectra Logic, Inc.](http://spectralogic.com).
 
 Thanks to [@vuleetu](https://github.com/vuleetu)
 for [initial inspiration](https://github.com/vuleetu/gorados).
