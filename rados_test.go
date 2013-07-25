@@ -24,6 +24,39 @@ func poolName() string {
     return fmt.Sprintf("rados.go.test.%d.%d", time.Now().Unix(), os.Getpid())
 }
 
+type radosTest struct {
+    t        *testing.T
+    rados    *Rados
+    poolName string
+}
+
+func setup(t *testing.T) *radosTest {
+    var rados *Rados
+    var err error
+
+    rados, err = NewDefault()
+    fatalOnError(t, err, "Setup: New")
+
+    poolName := poolName()
+    err = rados.PoolCreate(poolName)
+    fatalOnError(t, err, "Setup: PoolCreate")
+
+    return &radosTest{
+        rados:    rados,
+        poolName: poolName,
+    }
+}
+
+func teardown(t *testing.T, test *radosTest) {
+    var err error
+
+    err = test.rados.PoolDelete(test.poolName)
+    fatalOnError(t, err, "Teardown: PoolDelete")
+
+    err = test.rados.Release()
+    fatalOnError(t, err, "Teardown: Release")
+}
+
 func Test_RadosNew(t *testing.T) {
     var rados *Rados
     var err error
@@ -57,32 +90,24 @@ func Test_RadosPoolCreateDelete(t *testing.T) {
 }
 
 func Test_RadosContext(t *testing.T) {
-    var rados *Rados
-    var err error
+    test := setup(t)
+    defer teardown(t, test)
 
-    rados, err = New("")
-    fatalOnError(t, err, "New")
-    defer rados.Release()
-
-    ctx, err := rados.NewContext("test")
+    ctx, err := test.rados.NewContext(test.poolName)
     fatalOnError(t, err, "NewContext")
     ctx.Release()
 
-    if ctx, err = rados.NewContext("pool that does not exist"); err == nil {
+    if ctx, err = test.rados.NewContext("pool that does not exist"); err == nil {
         t.Errorf("NewContext should have failed")
         ctx.Release()
     }
 }
 
 func Test_RadosObject(t *testing.T) {
-    var rados *Rados
-    var err error
+    test := setup(t)
+    defer teardown(t, test)
 
-    rados, err = New("")
-    fatalOnError(t, err, "New")
-    defer rados.Release()
-
-    ctx, err := rados.NewContext("test")
+    ctx, err := test.rados.NewContext(test.poolName)
     fatalOnError(t, err, "NewContext")
     defer ctx.Release()
 
