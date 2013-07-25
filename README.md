@@ -17,7 +17,6 @@ LICENSE file.
 ## TODO
 
 - More generic Reader/Writer implemenation. Track file position and provide Seek()
-- Append
 - Extended attributes
 - TMAP -- what should this API look like?
 - Object locality controls: rados_ioctx_locator_set_key, rados_clone_range
