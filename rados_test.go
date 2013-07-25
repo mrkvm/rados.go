@@ -3,6 +3,7 @@ package rados
 import (
     "bytes"
     "fmt"
+    "io"
     "os"
     "testing"
     "time"
@@ -103,6 +104,7 @@ func Test_RadosContext(t *testing.T) {
     }
 }
 
+// Test basic object operations.
 func Test_RadosObject(t *testing.T) {
     test := setup(t)
     defer teardown(t, test)
@@ -117,7 +119,7 @@ func Test_RadosObject(t *testing.T) {
 
     // Create an object
     _, err = ctx.Create(name)
-    errorOnError(t, err, "Create")
+    fatalOnError(t, err, "Create")
 
     // Make sure it's there
     objInfo, err := ctx.Stat(name)
@@ -129,7 +131,7 @@ func Test_RadosObject(t *testing.T) {
 
     // Put data in the object
     err = ctx.Put(name, data)
-    errorOnError(t, err, "Put")
+    fatalOnError(t, err, "Put")
 
     // Make sure everything looks right
     objInfo, err = ctx.Stat(name)
@@ -192,5 +194,120 @@ func Test_RadosObject(t *testing.T) {
     objInfo, err = ctx.Stat(name2)
     if err == nil {
         t.Errorf("Object %s should have been deleted be status returned success", name2)
+    }
+}
+
+func Test_ReadAtWriteAt(t *testing.T) {
+    test := setup(t)
+    defer teardown(t, test)
+
+    ctx, err := test.rados.NewContext(test.poolName)
+    fatalOnError(t, err, "NewContext")
+    defer ctx.Release()
+
+    name := "test-object"
+    data := make([]byte, 5)
+
+    // Create a new object
+    obj, err := ctx.Create(name)
+    fatalOnError(t, err, "Create")
+
+    // Try to Read the first byte (expect EOF).
+    n, err := obj.ReadAt(data, 0)
+
+    if err == nil {
+        t.Errorf("Expected non-nil error on ReadAt() of empty object.")
+    }
+
+    if err != io.EOF {
+        t.Errorf("Expected EOF for ReadAt() of empty object, got %s", err)
+    }
+
+    if n != 0 {
+        t.Errorf("Expected 0 bytes read for ReadAt() of empty object, got %d", n)
+    }
+
+    // Write some data to the beginning
+    data = []byte("12345")
+    n, err = obj.WriteAt(data, 0)
+    fatalOnError(t, err, "WriteAt")
+
+    if n != len(data) {
+        t.Errorf("Expected to have %d bytes written but was %d", len(data), n)
+    }
+
+    // Read the third byte
+    data = make([]byte, 1)
+    n, err = obj.ReadAt(data, 2)
+    fatalOnError(t, err, "ReadAt")
+
+    if n != len(data) {
+        t.Errorf("Expected to have %d bytes read but was %d", len(data), n)
+    }
+
+    if data[0] != '3' {
+        t.Errorf("Expected to have read 3 but was %v", data[0])
+    }
+
+    // Write the third byte with something new
+    data[0] = 'C'
+    n, err = obj.WriteAt(data, 2)
+    fatalOnError(t, err, "WriteAt")
+
+    if n != len(data) {
+        t.Errorf("Expected to have %d bytes written but was %d", len(data), n)
+    }
+
+    // Make sure it's correct
+    data = make([]byte, 1)
+    n, err = obj.ReadAt(data, 2)
+    fatalOnError(t, err, "ReadAt")
+
+    if n != len(data) {
+        t.Errorf("Expected to have %d bytes read but was %d", len(data), n)
+    }
+
+    if data[0] != 'C' {
+        t.Errorf("Expected to have read C but was %v", data[0])
+    }
+
+    // Try to read past the end
+    data = make([]byte, 2)
+    n, err = obj.ReadAt(data, 4)
+
+    if err == nil {
+        t.Errorf("Expected non-nil error on ReadAt() reading past end of object")
+    }
+
+    if err != io.EOF {
+        t.Errorf("Expected EOF for ReadAt() reading past end of object, got %s", err)
+    }
+
+    if n != 1 {
+        t.Errorf("Expected 1 bytes read for ReadAt() past end of object, got %d", n)
+    }
+
+    if data[0] != '5' {
+        t.Errorf("Expected to have read 5 but was %v", data[0])
+    }
+
+    // Try to write past the end
+    data[0] = 'E'
+    data[1] = 'F'
+    n, err = obj.WriteAt(data, 4)
+    fatalOnError(t, err, "WriteAt")
+
+    if n != len(data) {
+        t.Errorf("Expected to have %d bytes written but was %d", len(data), n)
+    }
+
+    // Read the whole object and make sure the data is correct
+    data = []byte("12C4EF")
+    data2, err := ctx.Get(name)
+    fatalOnError(t, err, "Get")
+
+    // It better be the same
+    if !bytes.Equal(data, data2) {
+        t.Errorf("Object data mismatch, was %s, expected %s", data2, data)
     }
 }

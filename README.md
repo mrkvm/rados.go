@@ -16,7 +16,6 @@ LICENSE file.
 
 ## TODO
 
-- ReadAt()/WriteAt() tests.
 - More generic Reader/Writer implemenation. Track file position and provide Seek()
 - Append
 - Extended attributes
