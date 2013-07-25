@@ -1,3 +1,7 @@
+// Package rados provides Go bindings for the CEPH RADOS client library (librados)
+// We attempt to adhere to the style of the Go OS package as much as possible
+// (for example, our Object type implements the FileStat and ReaderAt/WriterAt
+// interfaces).
 package rados
 
 /*
@@ -12,6 +16,7 @@ import (
     "unsafe"
 )
 
+// Rados provides a handle for interacting with a RADOS cluster.
 type Rados struct {
     rados      C.rados_t
     size       uint64
@@ -20,17 +25,18 @@ type Rados struct {
     numObjects uint64
 }
 
+// strerror is a utility wrapper around the libc strerror() function. It returns
+// a Go string containing the text of the error.
 func strerror(cerr C.int) string {
     return C.GoString(C.strerror(-cerr))
 }
 
-/* New returns a RADOS cluster handle that is used to create IO
- * Contexts and perform other RADOS actions. If configFile is
- * non-empty, RADOS will look for its configuration there, otherwise
- * the default paths will be searched (e.g., /etc/ceph/ceph.conf).
- *
- * TODO: allow caller to specify Ceph user.
- */
+// New returns a RADOS cluster handle that is used to create IO
+// Contexts and perform other RADOS actions. If configFile is
+// non-empty, RADOS will look for its configuration there, otherwise
+// the default paths will be searched (e.g., /etc/ceph/ceph.conf).
+//
+// TODO: allow caller to specify Ceph user.
 func New(configFile string) (*Rados, error) {
     r := &Rados{}
     var cerr C.int
@@ -65,17 +71,15 @@ func New(configFile string) (*Rados, error) {
     return r, nil
 }
 
-/* NewDefault returns a RADOS cluster handle based on the default config file. See New()
- * for more information.
- */
+// NewDefault returns a RADOS cluster handle based on the default config file.
+// See New() for more information.
 func NewDefault() (r *Rados, err error) {
     r, err = New("")
     return r, err
 }
 
-/* Stat retrieves the current cluster statistics and stores them in
- * the Rados structure.
- */
+// Stat retrieves the current cluster statistics and stores them in
+// the Rados structure.
 func (r *Rados) Stat() error {
     var cstat C.struct_rados_cluster_stat_t
 
@@ -91,47 +95,41 @@ func (r *Rados) Stat() error {
     return nil
 }
 
-/* Size returns the total size of the cluster in kilobytes.
- */
+// Size returns the total size of the cluster in kilobytes.
 func (r *Rados) Size() uint64 {
     return r.size
 }
 
-/* Used returns the number of used kilobytes in the cluster.
- */
+// Used returns the number of used kilobytes in the cluster.
 func (r *Rados) Used() uint64 {
     return r.used
 }
 
-/* Avail returns the number of available kilobytes in the cluster.
- */
+// Avail returns the number of available kilobytes in the cluster.
 func (r *Rados) Avail() uint64 {
     return r.avail
 }
 
-/* NumObjects returns the number of objects in the cluster.
- */
+// NumObjects returns the number of objects in the cluster.
 func (r *Rados) NumObjects() uint64 {
     return r.numObjects
 }
 
-/* Release handle and disconnect from RADOS cluster.
- *
- * TODO: track all open ioctx, ensure all async operations have
- * completed before calling rados_shutdown, because it doesn't do that
- * itself.
- */
+// Release handle and disconnect from RADOS cluster.
+//
+// TODO: track all open ioctx, ensure all async operations have
+// completed before calling rados_shutdown, because it doesn't do that
+// itself.
 func (r *Rados) Release() error {
     C.rados_shutdown(r.rados)
 
     return nil
 }
 
-/* PoolCreate creates the named pool in the given RADOS cluster.
- * PoolCreate uses the default admin user and crush rule.
- *
- * TODO: Add ability to create pools with specific admin users/crush rules.
- */
+// PoolCreate creates the named pool in the given RADOS cluster.
+// PoolCreate uses the default admin user and crush rule.
+//
+// TODO: Add ability to create pools with specific admin users/crush rules.
 func (r *Rados) PoolCreate(poolName string) error {
     cname := C.CString(poolName)
     defer C.free(unsafe.Pointer(cname))
@@ -143,8 +141,7 @@ func (r *Rados) PoolCreate(poolName string) error {
     return nil
 }
 
-/* PoolDelete deletes the named pool in the given RADOS cluster.
- */
+// PoolDelete deletes the named pool in the given RADOS cluster.
 func (r *Rados) PoolDelete(poolName string) error {
     cname := C.CString(poolName)
     defer C.free(unsafe.Pointer(cname))

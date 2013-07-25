@@ -12,14 +12,14 @@ import (
     "unsafe"
 )
 
+// Context represents a RADOS IO context for the pool Pool.
 type Context struct {
     Pool string
     ctx  C.rados_ioctx_t
 }
 
-/* NewContext creates a new RADOS IO context for a given pool, used to
- * do IO operations. The pool must exist (see Rados.CreatePool()).
- */
+// NewContext creates a new RADOS IO context for a given pool, which used to
+// do IO operations. The pool must exist (see Rados.PoolCreate()).
 func (r *Rados) NewContext(pool string) (*Context, error) {
     if r.rados == nil {
         return nil, fmt.Errorf("RADOS not connected")
@@ -38,11 +38,10 @@ func (r *Rados) NewContext(pool string) (*Context, error) {
     return c, nil
 }
 
-/* Release this RADOS IO context.
- *
- * TODO: track all uncompleted async operations before calling
- * rados_ioctx_create, because it doesn't do that itself.
- */
+// Release this RADOS IO context.
+//
+// TODO: track all uncompleted async operations before calling
+// rados_ioctx_destroy(), because it doesn't do that itself.
 func (c *Context) Release() error {
     C.rados_ioctx_destroy(c.ctx)
 
