@@ -126,3 +126,32 @@ func (r *Rados) Release() error {
 
     return nil
 }
+
+/* PoolCreate creates the named pool in the given RADOS cluster.
+ * PoolCreate uses the default admin user and crush rule.
+ *
+ * TODO: Add ability to create pools with specific admin users/crush rules.
+ */
+func (r *Rados) PoolCreate(poolName string) error {
+    cname := C.CString(poolName)
+    defer C.free(unsafe.Pointer(cname))
+
+    if cerr := C.rados_pool_create(r.rados, cname); cerr < 0 {
+        return fmt.Errorf("RADOS pool create %s: %s", poolName, strerror(cerr))
+    }
+
+    return nil
+}
+
+/* PoolDelete deletes the named pool in the given RADOS cluster.
+ */
+func (r *Rados) PoolDelete(poolName string) error {
+    cname := C.CString(poolName)
+    defer C.free(unsafe.Pointer(cname))
+
+    if cerr := C.rados_pool_delete(r.rados, cname); cerr < 0 {
+        return fmt.Errorf("RADOS pool delete %s: %s", poolName, strerror(cerr))
+    }
+
+    return nil
+}

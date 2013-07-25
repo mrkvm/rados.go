@@ -3,7 +3,9 @@ package rados
 import (
     "bytes"
     "fmt"
+    "os"
     "testing"
+    "time"
 )
 
 func errorOnError(t *testing.T, e error, message string, parameters ...interface{}) {
@@ -18,11 +20,15 @@ func fatalOnError(t *testing.T, e error, message string, parameters ...interface
     }
 }
 
+func poolName() string {
+    return fmt.Sprintf("rados.go.test.%d.%d", time.Now().Unix(), os.Getpid())
+}
+
 func Test_RadosNew(t *testing.T) {
     var rados *Rados
     var err error
 
-    rados, err = New("")
+    rados, err = NewDefault()
     fatalOnError(t, err, "New")
 
     err = rados.Release()
@@ -32,6 +38,22 @@ func Test_RadosNew(t *testing.T) {
         t.Errorf("New should have failed")
         rados.Release()
     }
+}
+
+func Test_RadosPoolCreateDelete(t *testing.T) {
+    var rados *Rados
+    var err error
+
+    rados, err = NewDefault()
+    fatalOnError(t, err, "New")
+    defer rados.Release()
+
+    poolName := poolName()
+    err = rados.PoolCreate(poolName)
+    fatalOnError(t, err, "PoolCreate")
+
+    err = rados.PoolDelete(poolName)
+    fatalOnError(t, err, "PoolDelete")
 }
 
 func Test_RadosContext(t *testing.T) {
