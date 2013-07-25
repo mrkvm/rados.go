@@ -311,3 +311,41 @@ func Test_ReadAtWriteAt(t *testing.T) {
         t.Errorf("Object data mismatch, was %s, expected %s", data2, data)
     }
 }
+
+func Test_Append(t *testing.T) {
+    test := setup(t)
+    defer teardown(t, test)
+
+    ctx, err := test.rados.NewContext(test.poolName)
+    fatalOnError(t, err, "NewContext")
+    defer ctx.Release()
+
+    name := "test-object"
+    data := []byte("0123456789")
+
+    // Append data to new object
+    err = ctx.Append(name, data[:5])
+    fatalOnError(t, err, "Append")
+
+    // Read object back
+    data2, err := ctx.Get(name)
+    fatalOnError(t, err, "Get")
+
+    // Check data integrity
+    if !bytes.Equal(data[:5], data2) {
+        t.Errorf("Object data mismatch, was %s, expected %s", data2, data[:5])
+    }
+
+    // Append more data to new object
+    err = ctx.Append(name, data[5:])
+    fatalOnError(t, err, "Append")
+
+    // Read object back
+    data2, err = ctx.Get(name)
+    fatalOnError(t, err, "Get")
+
+    // Check data integrity
+    if !bytes.Equal(data, data2) {
+        t.Errorf("Object data mismatch, was %s, expected %s", data2, data)
+    }
+}

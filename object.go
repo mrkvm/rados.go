@@ -148,6 +148,21 @@ func byteSliceToBuffer(data []byte) (*C.char, C.size_t) {
     }
 }
 
+// Append writes the given data to the end of the named object
+// in the pool referenced by the given context.
+func (c *Context) Append(name string, data []byte) error {
+    cname := C.CString(name)
+    defer C.free(unsafe.Pointer(cname))
+
+    cdata, cdatalen := byteSliceToBuffer(data)
+
+    if cerr := C.rados_append(c.ctx, cname, cdata, cdatalen); cerr < 0 {
+        return fmt.Errorf("RADOS put %s: %s", name, strerror(cerr))
+    }
+
+    return nil
+}
+
 // Put writes data to the named object in the pool referenced by the
 // given context. If the object does not exist, it will be created.
 // If the object exists, it will first be truncated to 0 then overwritten.
