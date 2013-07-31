@@ -25,12 +25,6 @@ type Rados struct {
     numObjects uint64
 }
 
-// strerror is a utility wrapper around the libc strerror() function. It returns
-// a Go string containing the text of the error.
-func strerror(cerr C.int) string {
-    return C.GoString(C.strerror(-cerr))
-}
-
 // New returns a RADOS cluster handle that is used to create IO
 // Contexts and perform other RADOS actions. If configFile is
 // non-empty, RADOS will look for its configuration there, otherwise
@@ -151,4 +145,21 @@ func (r *Rados) PoolDelete(poolName string) error {
     }
 
     return nil
+}
+
+// byteSliceToBuffer is a utility function to convert the given byte slice
+// to a C character pointer. It returns the pointer and the size of
+// the data (as a C size_t).
+func byteSliceToBuffer(data []byte) (*C.char, C.size_t) {
+    if len(data) > 0 {
+        return (*C.char)(unsafe.Pointer(&data[0])), C.size_t(len(data))
+    } else {
+        return (*C.char)(unsafe.Pointer(&data)), C.size_t(0)
+    }
+}
+
+// strerror is a utility wrapper around the libc strerror() function. It returns
+// a Go string containing the text of the error.
+func strerror(cerr C.int) string {
+    return C.GoString(C.strerror(-cerr))
 }

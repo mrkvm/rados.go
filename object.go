@@ -319,17 +319,6 @@ func (o *Object) WriteAt(data []byte, off int64) (n int, err error) {
     return
 }
 
-// byteSliceToBuffer is a utility function to convert the given byte slice
-// to a C character pointer. It returns the pointer and the size of
-// the data (as a C size_t).
-func byteSliceToBuffer(data []byte) (*C.char, C.size_t) {
-    if len(data) > 0 {
-        return (*C.char)(unsafe.Pointer(&data[0])), C.size_t(len(data))
-    } else {
-        return (*C.char)(unsafe.Pointer(&data)), C.size_t(0)
-    }
-}
-
 // TODO:
 // func (o *Object) WriteInContext(Context *c, ...)
 // func (o *Object) ReadInContext(Context *c, ...)
