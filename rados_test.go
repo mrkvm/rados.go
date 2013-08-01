@@ -39,8 +39,8 @@ func setup(t *testing.T) *radosTest {
     fatalOnError(t, err, "Setup: New")
 
     poolName := poolName()
-    err = rados.PoolCreate(poolName)
-    fatalOnError(t, err, "Setup: PoolCreate")
+    err = rados.CreatePool(poolName)
+    fatalOnError(t, err, "Setup: CreatePool")
 
     return &radosTest{
         rados:    rados,
@@ -51,8 +51,8 @@ func setup(t *testing.T) *radosTest {
 func teardown(t *testing.T, test *radosTest) {
     var err error
 
-    err = test.rados.PoolDelete(test.poolName)
-    fatalOnError(t, err, "Teardown: PoolDelete")
+    err = test.rados.DeletePool(test.poolName)
+    fatalOnError(t, err, "Teardown: DeletePool")
 
     err = test.rados.Release()
     fatalOnError(t, err, "Teardown: Release")
@@ -74,7 +74,7 @@ func Test_RadosNew(t *testing.T) {
     }
 }
 
-func Test_RadosPoolCreateDelete(t *testing.T) {
+func Test_RadosCreateDeletePool(t *testing.T) {
     var rados *Rados
     var err error
 
@@ -83,11 +83,11 @@ func Test_RadosPoolCreateDelete(t *testing.T) {
     defer rados.Release()
 
     poolName := poolName()
-    err = rados.PoolCreate(poolName)
-    fatalOnError(t, err, "PoolCreate")
+    err = rados.CreatePool(poolName)
+    fatalOnError(t, err, "CreatePool")
 
-    err = rados.PoolDelete(poolName)
-    fatalOnError(t, err, "PoolDelete")
+    err = rados.DeletePool(poolName)
+    fatalOnError(t, err, "DeletePool")
 }
 
 func Test_RadosContext(t *testing.T) {
@@ -347,5 +347,26 @@ func Test_Append(t *testing.T) {
     // Check data integrity
     if !bytes.Equal(data, data2) {
         t.Errorf("Object data mismatch, was %s, expected %s", data2, data)
+    }
+}
+
+func Test_ListPools(t *testing.T) {
+    test := setup(t)
+    defer teardown(t, test)
+
+    // List the pools
+    pools, err := test.rados.ListPools()
+    fatalOnError(t, err, "ListPools")
+
+    // Make sure we find our test pool
+    var i int
+    for i, _ = range pools {
+        if pools[i] == test.poolName {
+            break
+        }
+    }
+
+    if i == len(pools) {
+        t.Errorf("Expected to find pool %s but it was not present.", test.poolName)
     }
 }

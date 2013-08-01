@@ -12,6 +12,7 @@ package rados
 import "C"
 
 import (
+    "bytes"
     "fmt"
     "unsafe"
 )
@@ -120,11 +121,11 @@ func (r *Rados) Release() error {
     return nil
 }
 
-// PoolCreate creates the named pool in the given RADOS cluster.
-// PoolCreate uses the default admin user and crush rule.
+// CreatePool creates the named pool in the given RADOS cluster.
+// CreatePool uses the default admin user and crush rule.
 //
 // TODO: Add ability to create pools with specific admin users/crush rules.
-func (r *Rados) PoolCreate(poolName string) error {
+func (r *Rados) CreatePool(poolName string) error {
     cname := C.CString(poolName)
     defer C.free(unsafe.Pointer(cname))
 
@@ -135,8 +136,8 @@ func (r *Rados) PoolCreate(poolName string) error {
     return nil
 }
 
-// PoolDelete deletes the named pool in the given RADOS cluster.
-func (r *Rados) PoolDelete(poolName string) error {
+// DeletePool deletes the named pool in the given RADOS cluster.
+func (r *Rados) DeletePool(poolName string) error {
     cname := C.CString(poolName)
     defer C.free(unsafe.Pointer(cname))
 
@@ -145,6 +146,48 @@ func (r *Rados) PoolDelete(poolName string) error {
     }
 
     return nil
+}
+
+// ListPools retuns a list of pools in the given RADOS cluster as
+// a slice of strings.
+func (r *Rados) ListPools() ([]string, error) {
+    var buf []byte
+    bufSize := 256 // Initial guess at amount of space we need
+
+    // Get the list of pools from RADOS. Note we may need to
+    // retry if our initial buffer size isn't big enough to
+    // hold all pools.
+    for {
+        buf = make([]byte, bufSize)
+        cdata, cdatalen := byteSliceToBuffer(buf)
+
+        // rados_pool_list() returns the number of bytes needed
+        // to return all pools.
+        cbufsize := C.rados_pool_list(r.rados, cdata, cdatalen)
+
+        if cbufsize < 0 {
+            return nil, fmt.Errorf("RADOS list pools: %s", strerror(cbufsize))
+        } else if int(cbufsize) > bufSize {
+            // We didn't have enough space -- try again
+            bufSize = int(cbufsize)
+            continue
+        }
+
+        break
+    }
+
+    // rados_pool_list() returns an array strings separated by NULL bytes
+    // with two NULL bytes at the end. Break these into individual strings.
+    pools := make([]string, 0)
+    poolsBuf := bytes.Split(buf, []byte{0})
+    for i, _ := range poolsBuf {
+        if len(poolsBuf[i]) == 0 {
+            continue
+        }
+        pools = append(pools, string(poolsBuf[i]))
+    }
+
+    return pools, nil
 }
 
 // byteSliceToBuffer is a utility function to convert the given byte slice
