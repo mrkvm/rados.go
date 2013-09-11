@@ -370,3 +370,25 @@ func Test_ListPools(t *testing.T) {
         t.Errorf("Expected to find pool %s but it was not present.", test.poolName)
     }
 }
+
+// TODO: make this a real test
+func Test_ClusterStat(t *testing.T) {
+    test := setup(t)
+    defer teardown(t, test)
+
+    err := test.rados.Stat()
+    fatalOnError(t, err, "Stat")
+}
+
+// TODO: make this a real test
+func Test_PoolStat(t *testing.T) {
+    test := setup(t)
+    defer teardown(t, test)
+
+    ctx, err := test.rados.NewContext(test.poolName)
+    fatalOnError(t, err, "NewContext")
+    defer ctx.Release()
+
+    _, err = ctx.PoolStat()
+    fatalOnError(t, err, "PoolStat")
+}

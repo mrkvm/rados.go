@@ -23,9 +23,10 @@ LICENSE file.
 - Object locality controls: rados_ioctx_locator_set_key, rados_clone_range
 - Pool-managed snapshot
 - Client-managed snapshot -- what should this API look like?
-- Pool stats
-- List pools
 - Object list iterator
+- Real tests for cluster/pool stats.
+- Change naming of cluster stat fields to match pool stats?
+- Provide additional bytes used/avail in cluster stats to match pool stats?
 
 Maybe:
 
