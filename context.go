@@ -47,3 +47,46 @@ func (c *Context) Release() error {
 
     return nil
 }
+
+// PoolInfo provides usage information about a pool
+type PoolInfo struct {
+    BytesUsed                  uint64
+    KBytesUsed                 uint64
+    NumObjects                 uint64
+    NumObjectClones            uint64
+    NumObjectCopies            uint64
+    NumObjectsMissingOnPrimary uint64
+    NumObjectsUnfound          uint64
+    NumObjectsDegraded         uint64
+    BytesRead                  uint64
+    BytesWritten               uint64
+    KBytesRead                 uint64
+    KBytesWritten              uint64
+}
+
+// PoolStat retrieves the current usage for pool referenced by the
+// given context and returns them in the PoolInfo structure.
+func (c *Context) PoolStat() (*PoolInfo, error) {
+    var pstat C.struct_rados_pool_stat_t
+
+    if cerr := C.rados_ioctx_pool_stat(c.ctx, &pstat); cerr < 0 {
+        return nil, fmt.Errorf("RADOS pool stat: %s", strerror(cerr))
+    }
+
+    info := &PoolInfo{
+        BytesUsed:                  uint64(pstat.num_bytes),
+        KBytesUsed:                 uint64(pstat.num_kb),
+        NumObjects:                 uint64(pstat.num_objects),
+        NumObjectClones:            uint64(pstat.num_object_clones),
+        NumObjectCopies:            uint64(pstat.num_object_copies),
+        NumObjectsMissingOnPrimary: uint64(pstat.num_objects_missing_on_primary),
+        NumObjectsUnfound:          uint64(pstat.num_objects_unfound),
+        NumObjectsDegraded:         uint64(pstat.num_objects_degraded),
+        BytesRead:                  uint64(pstat.num_rd),
+        BytesWritten:               uint64(pstat.num_wr),
+        KBytesRead:                 uint64(pstat.num_rd_kb),
+        KBytesWritten:              uint64(pstat.num_wr_kb),
+    }
+
+    return info, nil
+}
