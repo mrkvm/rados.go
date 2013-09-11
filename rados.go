@@ -19,11 +19,11 @@ import (
 
 // Rados provides a handle for interacting with a RADOS cluster.
 type Rados struct {
-    rados      C.rados_t
-    size       uint64
-    used       uint64
-    avail      uint64
-    numObjects uint64
+    rados    C.rados_t
+    size     uint64
+    used     uint64
+    avail    uint64
+    nObjects uint64
 }
 
 // New returns a RADOS cluster handle that is used to create IO
@@ -85,7 +85,7 @@ func (r *Rados) Stat() error {
     r.size = uint64(cstat.kb)
     r.used = uint64(cstat.kb_used)
     r.avail = uint64(cstat.kb_avail)
-    r.numObjects = uint64(cstat.num_objects)
+    r.nObjects = uint64(cstat.num_objects)
 
     return nil
 }
@@ -105,9 +105,9 @@ func (r *Rados) Avail() uint64 {
     return r.avail
 }
 
-// NumObjects returns the number of objects in the cluster.
-func (r *Rados) NumObjects() uint64 {
-    return r.numObjects
+// NObjects returns the number of objects in the cluster.
+func (r *Rados) NObjects() uint64 {
+    return r.nObjects
 }
 
 // Release handle and disconnect from RADOS cluster.

@@ -50,18 +50,18 @@ func (c *Context) Release() error {
 
 // PoolInfo provides usage information about a pool
 type PoolInfo struct {
-    BytesUsed                  uint64
-    KBytesUsed                 uint64
-    NumObjects                 uint64
-    NumObjectClones            uint64
-    NumObjectCopies            uint64
-    NumObjectsMissingOnPrimary uint64
-    NumObjectsUnfound          uint64
-    NumObjectsDegraded         uint64
-    BytesRead                  uint64
-    BytesWritten               uint64
-    KBytesRead                 uint64
-    KBytesWritten              uint64
+    BytesUsed                uint64
+    KBytesUsed               uint64
+    NObjects                 uint64
+    NObjectClones            uint64
+    NObjectCopies            uint64
+    NObjectsMissingOnPrimary uint64
+    NObjectsUnfound          uint64
+    NObjectsDegraded         uint64
+    BytesRead                uint64
+    BytesWritten             uint64
+    KBytesRead               uint64
+    KBytesWritten            uint64
 }
 
 // PoolStat retrieves the current usage for pool referenced by the
@@ -74,18 +74,18 @@ func (c *Context) PoolStat() (*PoolInfo, error) {
     }
 
     info := &PoolInfo{
-        BytesUsed:                  uint64(pstat.num_bytes),
-        KBytesUsed:                 uint64(pstat.num_kb),
-        NumObjects:                 uint64(pstat.num_objects),
-        NumObjectClones:            uint64(pstat.num_object_clones),
-        NumObjectCopies:            uint64(pstat.num_object_copies),
-        NumObjectsMissingOnPrimary: uint64(pstat.num_objects_missing_on_primary),
-        NumObjectsUnfound:          uint64(pstat.num_objects_unfound),
-        NumObjectsDegraded:         uint64(pstat.num_objects_degraded),
-        BytesRead:                  uint64(pstat.num_rd),
-        BytesWritten:               uint64(pstat.num_wr),
-        KBytesRead:                 uint64(pstat.num_rd_kb),
-        KBytesWritten:              uint64(pstat.num_wr_kb),
+        BytesUsed:                uint64(pstat.num_bytes),
+        KBytesUsed:               uint64(pstat.num_kb),
+        NObjects:                 uint64(pstat.num_objects),
+        NObjectClones:            uint64(pstat.num_object_clones),
+        NObjectCopies:            uint64(pstat.num_object_copies),
+        NObjectsMissingOnPrimary: uint64(pstat.num_objects_missing_on_primary),
+        NObjectsUnfound:          uint64(pstat.num_objects_unfound),
+        NObjectsDegraded:         uint64(pstat.num_objects_degraded),
+        BytesRead:                uint64(pstat.num_rd),
+        BytesWritten:             uint64(pstat.num_wr),
+        KBytesRead:               uint64(pstat.num_rd_kb),
+        KBytesWritten:            uint64(pstat.num_wr_kb),
     }
 
     return info, nil
